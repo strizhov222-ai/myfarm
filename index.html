@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Mini Farm</title>
+    <!-- Подключаем официальный скрипт Telegram Web Apps -->
+    <script src="https://telegram.org"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e0f2fe, #bbf7d0);
+            margin: 0;
+            padding: 16px;
+            color: #1e293b;
+            text-align: center;
+            user-select: none;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-bottom: 16px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .btn {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-orange { background: #f97316; }
+        .btn-blue { background: #3b82f6; }
+        .disabled { background: #cbd5e1; cursor: not-allowed; }
+        
+        #garden-plot {
+            font-size: 48px;
+            margin: 20px 0;
+            height: 60px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>🧑‍🌾 Моя Web-Ферма</h2>
+
+    <!-- Блок баланса и склада -->
+    <div class="card stats">
+        <div>🪙 <span id="balance">50</span></div>
+        <div>🥔 <span id="inv-potato">0</span></div>
+        <div>🍅 <span id="inv-tomato">0</span></div>
+    </div>
+
+    <!-- Блок грядки -->
+    <div class="card">
+        <h3>Грядка</h3>
+        <div id="garden-plot">🟫</div>
+        <div id="garden-status" style="font-size: 14px; color: #64748b; margin-bottom: 10px;">Пусто</div>
+        <button id="action-btn" class="btn btn-blue" onclick="checkOrHarvest()">Проверить</button>
+    </div>
+
+    <!-- Блок действий -->
+    <div class="grid">
+        <button class="btn" onclick="plant('potato')">🌱 Картошка<br><small>(10 🪙)</small></button>
+        <button class="btn" onclick="plant('tomato')">🌱 Помидор<br><small>(25 🪙)</small></button>
+        <button class="btn btn-orange" onclick="sell('potato')">💵 Продать 🥔<br><small>(+25 🪙)</small></button>
+        <button class="btn btn-orange" onclick="sell('tomato')">💵 Продать 🍅<br><small>(+60 🪙)</small></button>
+    </div>
+
+    <script>
+        // Инициализация Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Расширяем на весь экран
+
+        // Локальное состояние (для демо-версии кликера)
+        let data = {
+            balance: 50,
+            inventory: { potato: 0, tomato: 0 },
+            garden: { status: 'empty', crop: null, readyTime: 0 }
+        };
+
+        function updateUI() {
+            document.getElementById('balance').innerText = data.balance;
+            document.getElementById('inv-potato').innerText = data.inventory.potato;
+            document.getElementById('inv-tomato').innerText = data.inventory.tomato;
+
+            const plot = document.getElementById('garden-plot');
+            const status = document.getElementById('garden-status');
+            const btn = document.getElementById('action-btn');
+
+            if (data.garden.status === 'empty') {
+                plot.innerText = '🟫';
+                status.innerText = 'Пусто. Посадите что-нибудь!';
+                btn.className = 'btn disabled';
+                btn.innerText = 'Пусто';
+            } else {
+                const now = Date.now();
+                if (now >= data.garden.readyTime) {
+                    plot.innerText = data.garden.crop === 'potato' ? '🥔' : '🍅';
+                    status.innerText = 'Созрело! Можно собирать!';
+                    btn.className = 'btn btn-blue';
+                    btn.innerText = '🧺 Собрать урожай';
+                } else {
+                    plot.innerText = '🌱';
+                    const left = Math.ceil((data.garden.readyTime - now) / 1000);
+                    status.innerText = `Растет... Осталось ${left} сек.`;
+                    btn.className = 'btn btn-orange';
+                    btn.innerText = '🔄 Обновить время';
+                }
+            }
+        }
+
+        function plant(crop) {
+            if (data.garden.status !== 'empty') return alert('Грядка уже занята!');
+            const cost = crop === 'potato' ? 10 : 25;
+            const time = crop === 'potato' ? 10000 : 20000; // 10 и 20 секунд для теста
+
+            if (data.balance < cost) return alert('Не хватает монет!');
+
+            data.balance -= cost;
+            data.garden = {
+                status: 'growing',
+                crop: crop,
+                readyTime: Date.now() + time
+            };
+            updateUI();
+        }
+
+        function checkOrHarvest() {
+            if (data.garden.status === 'growing') {
+                updateUI();
+            } else if (data.garden.status === 'growing' && Date.now() >= data.garden.readyTime) {
+                updateUI();
+            } else if (data.garden.status === 'growing') {
+                return;
+            }
+            
+            if (data.garden.status === 'growing' && Date.now() >= data.garden.readyTime) {
+                // Переключаем внутренний статус, если время вышло
+            }
+            
+            const now = Date.now();
+            if (data.garden.status === 'growing' && now >= data.garden.readyTime) {
+                data.inventory[data.garden.crop]++;
+                data.garden = { status: 'empty', crop: null, readyTime: 0 };
+                updateUI();
+                tg.HapticFeedback.notificationOccurred('success'); // Вибрация при успехе
+            } else if (data.garden.status === 'empty') {
+                // Ничего
+            } else {
+                updateUI();
+            }
+        }
+
+        function sell(crop) {
+            if (data.inventory[crop] <= 0) return alert('У вас нет этого на складе!');
+            const price = crop === 'potato' ? 25 : 60;
+            
+            data.inventory[crop]--;
+            data.balance += price;
+            updateUI();
+        }
+
+        // Кнопка закрытия внизу от Telegram
+        tg.MainButton.setText("Выйти из фермы").show().onClick(() => tg.close());
+
+        setInterval(updateUI, 1000); // Автообновление каждую секунду
+        updateUI();
+    </script>
+</body>
+</html>
